@@ -1,0 +1,11 @@
+# 课程数据、预训练权重和训练产物均不提交。
+baseline/data/
+baseline/checkpoint/
+baseline/workspace/
+baseline/EARS/
+
+# Python 缓存与编辑器临时文件。
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
