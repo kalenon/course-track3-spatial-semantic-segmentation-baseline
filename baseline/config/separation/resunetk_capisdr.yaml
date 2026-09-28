@@ -11,7 +11,7 @@ datamodule:
     args:
         train_dataloader:
             batch_size: 4
-            num_workers: 4
+            num_workers: 0
             persistent_workers: false
             dataset:
                 module: src.datamodules.dataset
@@ -53,7 +53,7 @@ datamodule:
                     return_meta: false
         val_dataloader:
             batch_size: 4
-            num_workers: 4
+            num_workers: 0
             persistent_workers: false
             dataset:
                 module: src.datamodules.dataset

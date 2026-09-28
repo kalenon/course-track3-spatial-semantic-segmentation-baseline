@@ -52,6 +52,8 @@ python verify.py --source_dir . \
 
 以下包装脚本只在 `WORK_ROOT` 生成替换挂载路径后的配置，不改仓库原始 YAML：
 
+训练配置默认采用较低的主机内存占用：四通道标注模型训练/验证批量为 8/4，源分离模型为 4/4；所有阶段的数据加载 `num_workers` 均为 0。在线声景合成会在主进程串行进行，通常可减少多进程数据预取造成的内存峰值，但训练可能变慢。资源充足时可复制 YAML 并逐步增大 `num_workers`；内存仍紧张时可进一步调低批量。底层训练命令的 `--batchsize` 只覆盖批量大小，不改变加载进程数。
+
 ```bash
 CUDA_VISIBLE_DEVICES="$GPU_ID" python -m scripts.train \
   --config config/label/m2dat_4c.yaml \
