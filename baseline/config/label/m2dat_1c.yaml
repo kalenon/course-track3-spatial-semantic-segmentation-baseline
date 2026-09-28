@@ -36,7 +36,7 @@ datamodule:
                                     direct_range_ms: [6, 50]
                         dupse_rate: 0.5
                         dupse_min_angle: 60.0
-                        max_n_dupse: 2
+                        max_n_dupse: 1
                         dupse_exclusion_folder_depth: 1
                         snr_range: [5, 20]
                         nevent_range: [0, 3]
