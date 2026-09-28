@@ -18,7 +18,7 @@ mkdir -p "$WORK_ROOT" "$WEIGHTS_ROOT"
 
 ### 安装项目依赖
 
-平台镜像已提供基础 PyTorch 环境时，在选定镜像的终端安装本项目依赖。依赖清单位于 [`pyproject.toml`](pyproject.toml)，不单独指定 Torch/CUDA 版本；推荐使用 Python 3.11。若平台要求隔离依赖，应先进入平台提供的个人虚拟环境。
+平台镜像已提供基础 PyTorch 环境时，在选定镜像的终端安装本项目依赖。依赖清单位于 [`pyproject.toml`](pyproject.toml)，不单独限制 Python 版本，也不指定 Torch/CUDA 版本。若平台要求隔离依赖，应先进入平台提供的个人虚拟环境。
 
 ```bash
 # 在仓库的 baseline/ 目录运行。
