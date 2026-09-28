@@ -1,69 +1,9 @@
-# Track 3 Baseline
+# Track 3 参考实现
 
-本目录提供 Track 3 的参考实现。系统采用两阶段结构：
+本项目完成四通道空间音频的事件标注与标签条件源分离。先阅读 [赛题说明](../大作业%20track%203.md)，再按 [平台使用与复现指南](COURSE_GUIDE.md) 挂载自己的数据和权重、选择 GPU、训练、验证及准备盲测提交。
 
-1. 音频标注（AT）网络从四通道 FOA 混合音频预测目标事件类别；
-2. 标签查询式源分离（SS）网络根据预测类别输出单通道目标波形。
+方法分两阶段：四通道音频标注网络识别目标事件类别，标签查询式源分离网络据此输出目标波形。训练阶段从独立事件、干扰音频、背景音和空间脉冲响应在线合成声景。训练与评估的原始 YAML 保留在 `config/`、`src/evaluation/eval_configs/`；平台上推荐使用 `scripts.train` 包装脚本传入自己的挂载路径，不必编辑这些 YAML。
 
-训练阶段使用在线空间声景合成：从课程提供的干声事件、FOA 房间脉冲响应、背景噪声和干扰声中随机构造训练样本。`src/modules/spatial_audio_synthesizer/` 已随本项目提供，无须另行下载。
+运行前请核对 [资产清单](ASSET_STATUS.md)，路径参数见 [PATHS.md](PATHS.md)。没有权重挂载时，可按 [课程指南](COURSE_GUIDE.md) 用 `scripts.download_weights` 从原发布处获取。参考权重在公开验证集上的实测值见 [BASELINE_RESULTS.md](BASELINE_RESULTS.md)。代码仓库不包含课程音频、大型预训练权重或后期盲测标签。
 
-## 环境
-
-```bash
-conda env create -f environment.yml
-conda activate ssp-track3
-```
-
-在 Linux 上，如音频依赖安装失败，可安装 SoX 开发包：
-
-```bash
-sudo apt-get install -y gcc g++ sox libsox-dev
-```
-
-## 数据放置
-
-将课程提供的数据放在 `data/dev_set/`。其应包含 `config`、`metadata`、`noise`、`room_ir`、`sound_event`、`interference` 和 `synthesized/test` 等目录。可运行以下命令检查结构与预训练特征提取器权重：
-
-```bash
-python verify.py --source_dir .
-```
-
-预训练特征提取器和参考检查点不包含在仓库中；由课程发布渠道另行提供，或按课程说明自行准备。
-
-## 训练
-
-先训练四通道音频标注网络：
-
-```bash
-python -m src.train -c config/label/m2dat_4c.yaml -w workspace/label
-```
-
-选定最佳 epoch 后，继续微调特征提取器最后两个块：
-
-```bash
-python -m src.train -c config/label/m2dat_4c_2blks.yaml \
-  -w workspace/label \
-  -r workspace/label/m2dat_4c/checkpoints/epoch=BEST_EPOCH_NUMBER.ckpt
-```
-
-训练标签查询式源分离网络：
-
-```bash
-python -m src.train -c config/separation/resunetk_capisdr.yaml -w workspace/separation
-```
-
-训练日志和检查点默认写入 `workspace/`。完整训练需要较高的 GPU 算力；建议先缩短配置文件中的 `dataset_length`，确认数据和训练流程正确后再进行完整训练。
-
-## 本地评测
-
-为评测配置中的 `tagger_ckpt`、`separator_ckpt` 填入本地检查点路径，再执行：
-
-```bash
-python -m src.evaluation.evaluate \
-  -c src/evaluation/eval_configs/m2dat_4c_resunetk.yaml \
-  --result_dir workspace/evaluation
-```
-
-## 许可证
-
-本目录以及 `third_party/SpAudSyn/` 中保留了相应的许可证文件。使用其中代码、数据或预训练模型时，请遵守各自许可证与课程要求。
+`src/modules/spatial_audio_synthesizer/` 和 `third_party/SpAudSyn/` 已随本项目提供；使用代码与外部资源时请遵守仓库内许可文件及课程要求。

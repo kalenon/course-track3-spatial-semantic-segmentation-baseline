@@ -1,56 +1,57 @@
-import os
+"""Check a mounted Track 3 development set and feature-extractor weights."""
+
 import argparse
+from pathlib import Path
 
-def verify_source_structure(source_dir):
-    print(f'\nVerify source directory: {os.path.abspath(source_dir)}', flush=True)
 
-    assert os.path.isdir(source_dir), f'Not a directory: {source_dir}'
-    assert os.path.isdir(os.path.join(source_dir, 'src')), f'Missing folder: src'
-    print('src: OK', flush=True)
+FEATURE_WEIGHT = (
+    "m2d_as_vit_base-80x1001p16x16p32k-240413_AS-FT_enconly/"
+    "weights_ep69it3124-0.47998.pth"
+)
+REQUIRED = (
+    "config", "metadata/valid.json", "metadata/valid",
+    "interference/train", "interference/valid",
+    "noise/train", "noise/valid", "room_ir/train", "room_ir/valid",
+    "sound_event/train", "sound_event/valid",
+    "synthesized/test/soundscape", "synthesized/test/oracle_target",
+)
 
-    assert os.path.isfile(os.path.join(source_dir, 'checkpoint/m2d_as_vit_base-80x1001p16x16p32k-240413_AS-FT_enconly/weights_ep69it3124-0.47998.pth')), f'Missing checkpoint: checkpoint/m2d_as_vit_base-80x1001p16x16p32k-240413_AS-FT_enconly/weights_ep69it3124-0.47998.pth'
-    print('M2D checkpoint: OK', flush=True)
 
-    spAudSyn_files = ['src/modules/spatial_audio_synthesizer/spatial_audio_synthesizer.py',
-                      'src/modules/spatial_audio_synthesizer/room.py',
-                      'src/modules/spatial_audio_synthesizer/utils.py',
-             ]
-    for f in spAudSyn_files:
-        assert os.path.isfile(f), f'Missing: {f}'
-    assert os.path.isfile(os.path.join(source_dir, 'src/modules/spatial_audio_synthesizer/spatial_audio_synthesizer.py'))
-    print('SpAudSyn modules: OK', flush=True)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source_dir", type=Path, default=Path("."),
+                        help="Repository baseline root (for legacy usage)")
+    parser.add_argument("--data-root", type=Path,
+                        help="Mounted dev_set directory; defaults to source_dir/data/dev_set")
+    parser.add_argument("--checkpoint-root", type=Path,
+                        help="Mounted weights directory; defaults to source_dir/checkpoint")
+    args = parser.parse_args()
+    source = args.source_dir.resolve()
+    data = (args.data_root or source / "data/dev_set").resolve()
+    checkpoint = (args.checkpoint_root or source / "checkpoint").resolve()
+    missing = []
+    if not (source / "src").is_dir():
+        missing.append(source / "src")
+    for relative in (
+        "src/modules/spatial_audio_synthesizer/spatial_audio_synthesizer.py",
+        "src/modules/spatial_audio_synthesizer/room.py",
+        "src/modules/spatial_audio_synthesizer/utils.py",
+    ):
+        if not (source / relative).is_file():
+            missing.append(source / relative)
+    for relative in REQUIRED:
+        if not (data / relative).exists():
+            missing.append(data / relative)
+    if not (checkpoint / FEATURE_WEIGHT).is_file():
+        missing.append(checkpoint / FEATURE_WEIGHT)
+    for name in ("m2dat_4c.ckpt", "resunetk.ckpt"):
+        if not (checkpoint / name).is_file():
+            missing.append(checkpoint / name)
+    print(f"Repository: {source}\nDevelopment set: {data}\nWeights: {checkpoint}")
+    if missing:
+        raise SystemExit("Missing required paths:\n" + "\n".join(map(str, missing)))
+    print("Track 3 data and feature weights: OK")
 
-    assert os.path.isfile(os.path.join(source_dir, 'data/dev_set/metadata/valid.json')), "missing valid.json"
-    datasubdirs = [
-        'dev_set',
-        'dev_set/config',
-        'dev_set/interference',
-        'dev_set/interference/train',
-        'dev_set/interference/valid',
-        'dev_set/noise',
-        'dev_set/noise/train',
-        'dev_set/noise/valid',
-        'dev_set/room_ir',
-        'dev_set/room_ir/train',
-        'dev_set/room_ir/valid',
-        'dev_set/sound_event',
-        'dev_set/sound_event/train',
-        'dev_set/sound_event/valid',
-        'dev_set/synthesized/test/soundscape',
-        'dev_set/synthesized/test/oracle_target',
-        'dev_set/metadata/valid',
-    ]
-    for subdir in datasubdirs:
-        folder = os.path.join(source_dir, 'data', subdir)
-        assert os.path.isdir(folder), f'Missing folder: {folder}'
-    print('data folders: OK', flush=True)
-    print("Source directory verified successfully.", flush=True)
-    print()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--source_dir", type=str, required=False, default='')
-    args = parser.parse_args()
-
-    if args.source_dir: # verify structure of the source directory
-        verify_source_structure(args.source_dir)
+    main()
