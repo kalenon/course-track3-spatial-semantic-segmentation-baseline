@@ -1,29 +1,28 @@
 # Track 3：平台使用与基线复现
 
-赛题以 [大作业 Track 3](../大作业%20track%203.md) 为准。你需要在课程平台自行挂载开发集、选择 GPU，并为输出指定可写目录；参考权重可以挂载已有副本，或按下文从原发布处下载。仓库内的 `data/`、`checkpoint/` 只是默认相对路径；下列流程不依赖它们。
+赛题以 [大作业 Track 3](../大作业%20track%203.md) 为准。开发集由课程平台提供，挂载路径取决于运行环境；模型权重需由使用者下载，并指定权重目录。GPU 编号与可写输出目录同样通过路径和环境变量配置。仓库内的 `data/`、`checkpoint/` 只是默认相对路径；下列流程不依赖它们。
 
-## 1. 挂载资源与环境
+## 1. 平台数据、权重与环境
 
-从仓库的 `baseline/` 目录执行。按平台实际挂载点修改：
+从仓库的 `baseline/` 目录执行。将示例路径替换为平台实际提供的数据挂载点及可写工作目录：
 
 ```bash
 export GPU_ID=0
-export DEV_SET_ROOT=/path/to/mounted/dev_set
-export WEIGHTS_ROOT=/path/to/mounted/checkpoint
+export DEV_SET_ROOT=/path/to/platform-mounted/dev_set
 export WORK_ROOT=/path/to/your-writable-workspace/track3
-mkdir -p "$WORK_ROOT"
+export WEIGHTS_ROOT="$WORK_ROOT/weights"
+mkdir -p "$WORK_ROOT" "$WEIGHTS_ROOT"
 ```
 
-`DEV_SET_ROOT` 必须指向包含 `metadata/`、`sound_event/`、`interference/` 等子目录的 **dev_set 本身**；`WEIGHTS_ROOT` 是包含 `m2dat_4c.ckpt`、`resunetk.ckpt` 和 M2D 权重目录的文件夹。已有资源的挂载路径可以只读；若使用下载脚本，`WEIGHTS_ROOT` 必须改为自己有写权限的目录，并预留数 GB 空间。`CUDA_VISIBLE_DEVICES="$GPU_ID"` 将分配的 GPU 映射为程序内的 `cuda:0`。
+`DEV_SET_ROOT` 指向包含 `metadata/`、`sound_event/`、`interference/` 等子目录的 **dev_set 本身**，数据挂载可为只读。`WEIGHTS_ROOT` 是可写的权重下载目录，下载完成后应包含 `m2dat_4c.ckpt`、`resunetk.ckpt` 和 M2D 权重目录；需预留数 GB 空间。`CUDA_VISIBLE_DEVICES="$GPU_ID"` 将分配的 GPU 映射为程序内的 `cuda:0`。
 
-若平台尚未提供参考权重，先设置可写目录，然后运行（约需下载 1.9 GB 压缩包）：
+参考模型与 M2D 权重不由平台提供。运行以下命令下载至 `WEIGHTS_ROOT`（约需下载 1.9 GB 压缩包）：
 
 ```bash
-export WEIGHTS_ROOT=/path/to/your-writable-workspace/track3/weights
 python -m scripts.download_weights --weights-root "$WEIGHTS_ROOT"
 ```
 
-脚本分别从参考模型发布包与 M2D 特征提取器发布包下载，支持断点续传和安全解压；提取时会按 ZIP 自带的 CRC 信息检查目标文件，已有文件也会核对后复用。先加 `--dry-run` 可查看 URL 与目标路径。若服务器不能访问外网，请在可联网机器下载后按相同目录结构挂载；不要把大型权重提交到 Git。
+脚本分别从参考模型发布包与 M2D 特征提取器发布包下载，支持断点续传和安全解压；提取时会按 ZIP 自带的 CRC 信息检查目标文件，已有文件也会核对后复用。先加 `--dry-run` 可查看 URL 与目标路径。若计算节点不能访问外网，可在可联网机器下载，再将权重目录复制或挂载到计算节点并相应设置 `WEIGHTS_ROOT`。大型权重不提交到 Git。
 
 ```bash
 conda env create -f environment.yml
@@ -65,7 +64,7 @@ CUDA_VISIBLE_DEVICES="$GPU_ID" python -m scripts.train \
 
 ## 4. 公开验证与参考权重
 
-以下示例使用课程提供的参考权重；若使用自己训练的模型，把 `TAGGER_CKPT`、`SEPARATOR_CKPT` 改为自己的文件。`FEATURE_WEIGHTS` 是 M2D 预训练特征提取器权重。
+以下示例使用前述步骤下载的参考权重；若使用自行训练的模型，将 `TAGGER_CKPT`、`SEPARATOR_CKPT` 指向相应文件。`FEATURE_WEIGHTS` 是 M2D 预训练特征提取器权重。
 
 ```bash
 export TAGGER_CKPT="$WEIGHTS_ROOT/m2dat_4c.ckpt"

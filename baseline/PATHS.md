@@ -1,12 +1,12 @@
 # Track 3 路径参数速查
 
-在 `baseline/` 下，先设置自己的挂载点（示例值均需替换）：
+在 `baseline/` 下设置路径变量；数据路径对应平台提供的挂载点，权重路径对应使用者下载后的目录（示例值需按运行环境替换）：
 
 ```bash
 export GPU_ID=0
-export DEV_SET_ROOT=/path/to/mounted/dev_set
-export WEIGHTS_ROOT=/path/to/mounted/checkpoint
+export DEV_SET_ROOT=/path/to/platform-mounted/dev_set
 export WORK_ROOT=/path/to/your-writable-workspace/track3
+export WEIGHTS_ROOT="$WORK_ROOT/weights"
 ```
 
 - 训练：`python -m scripts.train --config config/label/m2dat_4c.yaml --data-root "$DEV_SET_ROOT" --checkpoint-root "$WEIGHTS_ROOT" --workspace "$WORK_ROOT/label"`。其他阶段只换配置和工作目录；`--resume` 指定已有 checkpoint。`--dry-run` 生成配置但不训练。
