@@ -16,6 +16,19 @@ mkdir -p "$WORK_ROOT" "$WEIGHTS_ROOT"
 
 `DEV_SET_ROOT` 指向包含 `metadata/`、`sound_event/`、`interference/` 等子目录的 **dev_set 本身**，数据挂载可为只读。`WEIGHTS_ROOT` 是可写的权重下载目录，下载完成后应包含 `m2dat_4c.ckpt`、`resunetk.ckpt` 和 M2D 权重目录；需预留数 GB 空间。`CUDA_VISIBLE_DEVICES="$GPU_ID"` 将分配的 GPU 映射为程序内的 `cuda:0`。
 
+### 安装项目依赖
+
+平台镜像已提供基础 PyTorch 环境时，在选定镜像的终端安装本项目依赖。依赖清单位于 [`pyproject.toml`](pyproject.toml)，不单独指定 Torch/CUDA 版本；推荐使用 Python 3.11。若平台要求隔离依赖，应先进入平台提供的个人虚拟环境。
+
+```bash
+# 在仓库的 baseline/ 目录运行。
+python -m pip install -e .
+python -m pip check
+python -c 'import sofa, lightning.pytorch, pytorch_lightning, torchmetrics, timm, nnAudio.features, torchlibrosa.stft, librosa, soundfile, yaml; from src.models.m2dat.portable_m2d import PortableM2D; assert hasattr(sofa, "Database"); print("Track 3 imports: OK")'
+```
+
+这里不使用仓库原有的 `requirements.txt` 和 `environment.yml`，两者包含固定 CUDA/PyTorch 配置或整套导出环境。若依赖安装报错或 `python -m pip check` 报告冲突，应核对镜像的 Python 与已预装包版本。GPU 可用性可用 `CUDA_VISIBLE_DEVICES="$GPU_ID" python -c 'import torch; print(torch.cuda.is_available())'` 检查。
+
 参考模型与 M2D 权重不由平台提供。运行以下命令下载至 `WEIGHTS_ROOT`（约需下载 1.9 GB 压缩包）：
 
 ```bash
@@ -25,13 +38,11 @@ python -m scripts.download_weights --weights-root "$WEIGHTS_ROOT"
 脚本分别从参考模型发布包与 M2D 特征提取器发布包下载，支持断点续传和安全解压；提取时会按 ZIP 自带的 CRC 信息检查目标文件，已有文件也会核对后复用。先加 `--dry-run` 可查看 URL 与目标路径。若计算节点不能访问外网，可在可联网机器下载，再将权重目录复制或挂载到计算节点并相应设置 `WEIGHTS_ROOT`。大型权重不提交到 Git。
 
 ```bash
-conda env create -f environment.yml
-conda activate ssp_track3
 python verify.py --source_dir . \
   --data-root "$DEV_SET_ROOT" --checkpoint-root "$WEIGHTS_ROOT"
 ```
 
-若平台已提供兼容环境，不必重新建环境；先确认 `python -c 'import torch; print(torch.cuda.is_available())'` 返回 `True`。环境文件主要面向 Linux/CUDA 平台；GPU 驱动和 CUDA 版本以平台为准。
+完成环境和权重准备后，再运行目录检查。GPU 驱动和 CUDA 版本以实例实际环境为准。
 
 ## 2. 数据检查与干扰音频
 
