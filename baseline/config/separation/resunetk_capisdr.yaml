@@ -10,7 +10,7 @@ datamodule:
     main: DataModule
     args:
         train_dataloader:
-            batch_size: 32
+            batch_size: 4
             num_workers: 4
             persistent_workers: false
             dataset:
