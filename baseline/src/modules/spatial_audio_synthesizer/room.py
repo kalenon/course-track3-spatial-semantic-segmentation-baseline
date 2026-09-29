@@ -5,8 +5,38 @@ import json
 import librosa
 import scipy.fft, scipy.signal
 import os
+from functools import lru_cache
 
 import sofa
+
+
+@lru_cache(maxsize=16)
+def _sofa_files(path):
+    return tuple(f for f in os.listdir(path) if f.endswith('.sofa'))
+
+
+@lru_cache(maxsize=32)
+def _sofa_geometry(path):
+    database = sofa.Database.open(path, mode='r', parallel=False)
+    try:
+        dims = database.Data.IR.dimensions()
+        shape = database.Data.IR.shape
+        dim_sizes = dict(zip(dims, shape))
+        return (int(database.Data.SamplingRate.get_values()[0]),
+                dim_sizes['R'], dim_sizes['M'], dim_sizes['N'])
+    finally:
+        database.close()
+
+
+@lru_cache(maxsize=16)
+def _sofa_positions(path):
+    database = sofa.Database.open(path, mode='r', parallel=False)
+    try:
+        positions = np.array(database.Source.Position.get_values(system="cartesian"), copy=True)
+        positions.setflags(write=False)
+        return positions
+    finally:
+        database.close()
 
 class BaseRoom:
     def __init__(self, **kwargs):
@@ -88,37 +118,29 @@ class SofaRoom(BaseRoom):
         # TODO: relative path vs absolute path
         assert direct_range_ms[0] > 0
         if os.path.isdir(path):
-            all_sofa_files = [f for f in os.listdir(path) if f.endswith('.sofa')] # sort all_sofa_files for reproducible
+            all_sofa_files = _sofa_files(os.fspath(path))
             assert all_sofa_files, f'No sofa file found in {path}'
             sofa_path = os.path.join(path, random.choice(all_sofa_files))
         else:
             sofa_path = path # path to a sofa file
         
-        sofafile = sofa.Database.open(sofa_path, mode='r', parallel=False)
-        dims = sofafile.Data.IR.dimensions() # ('M', 'R', 'N')
-        shape = sofafile.Data.IR.shape # ( ... , 4, 48000)
-        dim_sizes = dict(zip(dims, shape))
-        sofa_sr = int(sofafile.Data.SamplingRate.get_values()[0])
+        sofa_sr, nchan, nrir, rir_len = _sofa_geometry(os.fspath(sofa_path))
         
         self.room_info = {
             'sofa_path': sofa_path,
             'sr': sofa_sr,
-            'nchan': dim_sizes['R'], # receiver
-            'nrir': dim_sizes['M'], # from 0 to nrir-1
-            'rir_len': dim_sizes['N'],
+            'nchan': nchan, # receiver
+            'nrir': nrir, # from 0 to nrir-1
+            'rir_len': rir_len,
             'direct_range_ms': direct_range_ms,
         }
-        sofafile.close()
 
         
     def get_nchan(self): # return number of mic
         return self.room_info['nchan']
 
     def get_all_positions(self):
-        sofafile = sofa.Database.open(self.room_info['sofa_path'], mode='r', parallel=False)
-        position = sofafile.Source.Position.get_values(system="cartesian")
-        sofafile.close()
-        return position # [[x,y,z]]
+        return _sofa_positions(self.room_info['sofa_path']) # Read-only [[x,y,z]]
 
         
     def get_position(self,
@@ -127,13 +149,9 @@ class SofaRoom(BaseRoom):
         if mode != 'point':
             raise NotImplementedError("Sofa room only support mode = 'point'")
 
-        sofafile = sofa.Database.open(self.room_info['sofa_path'], mode='r', parallel=False)
-
         selected_index = random.randint(0, self.room_info['nrir'] - 1)
-        position = sofafile.Source.Position.get_values(indices={'M': selected_index}, system="cartesian")
+        position = self.get_all_positions()[selected_index:selected_index + 1]
         position = [position.tolist()]
-
-        sofafile.close()
         
         return position # [[x,y,z]]
         
@@ -152,11 +170,10 @@ class SofaRoom(BaseRoom):
         assert source_position.shape[0] == 1, 'sofa room does not support moving sources'
         source_position = source_position[0]
 
-        sofafile = sofa.Database.open(self.room_info['sofa_path'], mode='r', parallel=False)
-
         # Get position index and then get the corresponding RIR
-        all_positions = sofafile.Source.Position.get_values(system="cartesian")
+        all_positions = self.get_all_positions()
         index = np.where(np.all(np.isclose(all_positions, source_position, atol=1e-6), axis=1))[0]
+        sofafile = sofa.Database.open(self.room_info['sofa_path'], mode='r', parallel=False)
         RIRs = sofafile.Data.IR.get_values(indices = {'M': index}, dim_order=None) # [1, nchan, rir len]
 
         # resample (if needed) and normalize RIR
@@ -193,4 +210,3 @@ class SofaRoom(BaseRoom):
 
         sofafile.close()
         return soundscape
-

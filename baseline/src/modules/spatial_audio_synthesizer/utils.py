@@ -2,23 +2,42 @@ import glob
 import os
 import sys
 import random
+from functools import lru_cache
 import numpy as np
 import importlib
+import librosa
+
+@lru_cache(maxsize=64)
+def _cached_files_list(path, extension, recursive):
+    if recursive:
+        pattern = os.path.join(path, f"**/*{extension}")
+    else:
+        pattern = os.path.join(path, f"*{extension}")
+    return tuple(glob.glob(pattern, recursive=recursive))
+
 
 def get_files_list(path, extension, recursive=False):
     """
     extension including dot, e.g., '.sofa'
     use '*' for everything
     """
-    if recursive:
-        pattern = os.path.join(path, f"**/*{extension}")
-    else:
-        pattern = os.path.join(path, f"*{extension}")
+    # Return a fresh list so callers cannot mutate the cached directory snapshot.
+    return list(_cached_files_list(os.fspath(path), extension, recursive))
 
-    return glob.glob(pattern, recursive=recursive)
+
+@lru_cache(maxsize=32)
+def _cached_labels(path):
+    return tuple(name for name in os.listdir(path)
+                 if os.path.isdir(os.path.join(path, name)) and name[0] != '.')
 
 def get_labels(path):
-    return [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name)) and name[0] != '.']
+    return list(_cached_labels(os.fspath(path)))
+
+
+@lru_cache(maxsize=8192)
+def get_audio_duration(path):
+    """Cache file-header duration, not decoded audio, to keep RAM use bounded."""
+    return librosa.get_duration(path=os.fspath(path))
 
 def find_event_time(mixture_duration, event_duration, max_overlap, existing_events):
     """

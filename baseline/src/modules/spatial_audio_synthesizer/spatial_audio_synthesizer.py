@@ -7,7 +7,7 @@ import json
 import wave
 import math
 
-from .utils import get_files_list, get_labels, find_event_time, trim_signal, initialize_config, source_file_filter
+from .utils import get_files_list, get_labels, get_audio_duration, find_event_time, trim_signal, initialize_config, source_file_filter
 
 class SpAudSyn:
     def __init__(
@@ -303,7 +303,7 @@ class SpAudSyn:
                 warnings.warn(f'NO EVENT ADDED: Invalid source_file option: {source_file}.')
                 return
 
-            event_duration_ = librosa.get_duration(path=source_file_)
+            event_duration_ = get_audio_duration(source_file_)
 
             # Select start time and duration of source: actual part of source used
             if source_time['method'] == "choose": # {'method': 'choose'}
