@@ -11,7 +11,7 @@ datamodule:
     args:
         train_dataloader:
             batch_size: 32
-            num_workers: 0
+            num_workers: 4
             persistent_workers: false
             dataset:
                 module: src.datamodules.dataset
@@ -53,7 +53,7 @@ datamodule:
                     return_meta: false
         val_dataloader:
             batch_size: 4
-            num_workers: 0
+            num_workers: 4
             persistent_workers: false
             dataset:
                 module: src.datamodules.dataset
@@ -121,7 +121,7 @@ train:
             module: lightning.pytorch.callbacks
             main: TQDMProgressBar
             args:
-                refresh_rate: 60
+                refresh_rate: 2
                 process_position: 0
     trainer:
         module: lightning.pytorch

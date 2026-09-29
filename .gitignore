@@ -11,6 +11,8 @@ __pycache__/
 .DS_Store
 
 /label_stage1
+/label_stage2
+/separation
 /baseline/ssp_course_track3_baseline.egg-info
 *.ckpt
 *.pth
