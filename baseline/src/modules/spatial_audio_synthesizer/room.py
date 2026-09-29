@@ -150,7 +150,7 @@ class SofaRoom(BaseRoom):
             raise NotImplementedError("Sofa room only support mode = 'point'")
 
         selected_index = random.randint(0, self.room_info['nrir'] - 1)
-        position = self.get_all_positions()[selected_index:selected_index + 1]
+        position = self.get_all_positions()[selected_index]
         position = [position.tolist()]
         
         return position # [[x,y,z]]

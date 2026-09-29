@@ -95,13 +95,21 @@ class SofaMetadataCacheTests(unittest.TestCase):
         self.assertEqual(room.room_info["nrir"], 2)
         with mock.patch.object(room_module.random, "randint", return_value=1):
             selected = room.get_position()
-        self.assertEqual(selected, [[[0.0, 1.0, 0.0]]])
+        self.assertEqual(selected, [[0.0, 1.0, 0.0]])
+        self.assertEqual(np.asarray([selected[0]]).shape, (1, 3))
+        # DatasetS3 compares this shape with every room position for duplicates.
+        reference = np.atleast_2d([selected[0]])
+        all_positions = room.get_all_positions()
+        cosine = (all_positions / np.linalg.norm(all_positions, axis=1, keepdims=True)) @ (
+            reference / np.linalg.norm(reference, axis=1, keepdims=True)
+        ).T
+        self.assertEqual(cosine.shape, (2, 1))
         self.assertFalse(room.get_all_positions().flags.writeable)
 
         second_room = room_module.SofaRoom("/data/room.sofa")
         with mock.patch.object(room_module.random, "randint", return_value=0):
             self.assertEqual(second_room.get_position(mode="point"),
-                             [[[1.0, 0.0, 0.0]]])
+                             [[1.0, 0.0, 0.0]])
         self.assertEqual(len(opened), 2)  # Geometry and positions, once each.
 
         result = room.synthesize(np.ones(4), 48000, selected, {"dry": False})
