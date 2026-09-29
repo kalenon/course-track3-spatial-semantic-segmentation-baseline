@@ -48,6 +48,8 @@ python verify.py --source_dir . \
 
 完整训练需要 `sound_event/{train,valid}`、`noise/{train,valid}`、`room_ir/{train,valid}`、`interference/{train,valid}` 和 `metadata/valid.json`。公开验证用混合音频在 `synthesized/test/soundscape`，参考目标在 `synthesized/test/oracle_target`；其中目录名 `test` 不代表课程最终盲测。缺少干扰音频时，可以先确认课程挂载是否完整；如课程要求自行补齐，见 [干扰音频准备脚本](scripts/prepare_interference.py) 和 [资产清单](ASSET_STATUS.md)。不要把原始音频或权重提交到 Git。
 
+验证样本 JSON 中保留的原始 `data/dev_set/...` 路径会在加载时自动映射到 `--data-root` 指定的挂载目录，无需在仓库内建立数据软链接。`verify.py` 也会检查这些样本内部引用的目录和房间响应文件。
+
 ## 3. 两阶段训练
 
 以下包装脚本只在 `WORK_ROOT` 生成替换挂载路径后的配置，不改仓库原始 YAML：

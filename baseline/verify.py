@@ -1,7 +1,10 @@
 """Check a mounted Track 3 development set and feature-extractor weights."""
 
 import argparse
+import json
 from pathlib import Path
+
+from src.datamodules.metadata_paths import rebase_dev_set_paths
 
 
 FEATURE_WEIGHT = (
@@ -15,6 +18,34 @@ REQUIRED = (
     "sound_event/train", "sound_event/valid",
     "synthesized/test/soundscape", "synthesized/test/oracle_target",
 )
+
+
+def check_validation_metadata(data: Path) -> list[Path]:
+    """Check paths inside each released validation scene, not just the index."""
+    index_path = data / "metadata/valid.json"
+    if not index_path.is_file():
+        return []  # Already reported by REQUIRED.
+
+    missing = []
+    with index_path.open(encoding="utf-8") as stream:
+        entries = json.load(stream)
+    for entry in entries:
+        metadata_path = data / "metadata" / entry["metadata_path"]
+        if not metadata_path.is_file():
+            missing.append(metadata_path)
+            continue
+        with metadata_path.open(encoding="utf-8") as stream:
+            metadata = rebase_dev_set_paths(json.load(stream), data)
+        config = metadata["config"]
+        room = metadata["room"]["args"]["metadata"]
+        for directory in ("foreground_dir", "background_dir", "interference_dir"):
+            value = config.get(directory)
+            if value and not Path(value).is_dir():
+                missing.append(Path(value))
+        for value in (config["room_config"]["args"]["path"], room["sofa_path"]):
+            if not Path(value).is_file():
+                missing.append(Path(value))
+    return list(dict.fromkeys(missing))
 
 
 def main():
@@ -42,6 +73,7 @@ def main():
     for relative in REQUIRED:
         if not (data / relative).exists():
             missing.append(data / relative)
+    missing.extend(check_validation_metadata(data))
     if not (checkpoint / FEATURE_WEIGHT).is_file():
         missing.append(checkpoint / FEATURE_WEIGHT)
     for name in ("m2dat_4c.ckpt", "resunetk.ckpt"):

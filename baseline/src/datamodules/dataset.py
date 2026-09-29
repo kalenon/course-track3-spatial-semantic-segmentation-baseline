@@ -8,6 +8,10 @@ import warnings
 import json
 
 from src.modules.spatial_audio_synthesizer.spatial_audio_synthesizer import SpAudSyn
+from src.datamodules.metadata_paths import (
+    dev_set_root_from_metadata_list,
+    rebase_dev_set_paths,
+)
 from src.utils import LABELS
 
 def collate_fn(list_data_dict):
@@ -61,6 +65,7 @@ class DatasetS3(torch.utils.data.Dataset):
             self.metadata_list = self.config['metadata_list']
 
             self.metadata_dir = os.path.dirname(self.metadata_list)
+            self.data_root = dev_set_root_from_metadata_list(self.metadata_list)
             with open(self.metadata_list) as f:
                 self.data = json.load(f);
             self.dataset_length = len(self.data)
@@ -306,5 +311,7 @@ class DatasetS3(torch.utils.data.Dataset):
     #=====================================================
     def _get_item_metadata(self, idx):
         metadata_path = os.path.join(self.metadata_dir, self.data[idx]['metadata_path'])
-        s3 = SpAudSyn.from_metadata(metadata_path)
+        with open(metadata_path) as f:
+            metadata = rebase_dev_set_paths(json.load(f), self.data_root)
+        s3 = SpAudSyn.from_metadata(metadata)
         return self._generate(s3)
