@@ -17,3 +17,5 @@ __pycache__/
 *.ckpt
 *.pth
 *.zip
+*.wav
+*.json
